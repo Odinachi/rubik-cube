@@ -24,8 +24,8 @@ class CubeState {
             leftColor: x == -1 ? Colors.orange : null,
             downColor: y == 1 ? Colors.yellow : null,
             upColor: y == -1 ? Colors.white : null,
-            frontColor: z == 1 ? Colors.green : null,
-            backColor: z == -1 ? Colors.blue : null,
+            frontColor: z == -1 ? Colors.green : null,
+            backColor: z == 1 ? Colors.blue : null,
           ));
         }
       }
@@ -57,15 +57,15 @@ class CubeState {
     // Rotate faces
     Color? temp = cubie.upColor;
     if (dir == 1) {
-      cubie.upColor = cubie.frontColor;
-      cubie.frontColor = cubie.downColor;
-      cubie.downColor = cubie.backColor;
-      cubie.backColor = temp;
-    } else {
       cubie.upColor = cubie.backColor;
       cubie.backColor = cubie.downColor;
       cubie.downColor = cubie.frontColor;
       cubie.frontColor = temp;
+    } else {
+      cubie.upColor = cubie.frontColor;
+      cubie.frontColor = cubie.downColor;
+      cubie.downColor = cubie.backColor;
+      cubie.backColor = temp;
     }
   }
 

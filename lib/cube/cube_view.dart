@@ -20,13 +20,36 @@ class RenderFace {
   RenderFace(this.transform, this.color, this.zDepth);
 }
 
-class _CubeViewState extends State<CubeView> {
+class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin {
   CubeState _cubeState = CubeState();
   
   double _rx = -pi / 6; // Initial rotation X
   double _ry = pi / 4;  // Initial rotation Y
   
   bool _prime = false; // Whether the next move is counter-clockwise
+
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  bool _isAnimating = false;
+  int _animAxis = 0;
+  int _animLayer = 0;
+  int _animDir = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _controller.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   void _onPanUpdate(DragUpdateDetails details) {
     setState(() {
@@ -36,8 +59,21 @@ class _CubeViewState extends State<CubeView> {
   }
 
   void _performMove(int axis, int layer) {
+    if (_isAnimating) return;
     setState(() {
-      _cubeState.rotateSlice(axis, layer, _prime ? -1 : 1);
+      _isAnimating = true;
+      _animAxis = axis;
+      _animLayer = layer;
+      _animDir = _prime ? -1 : 1;
+    });
+    
+    _controller.forward(from: 0.0).then((_) {
+      if (mounted) {
+        setState(() {
+          _isAnimating = false;
+          _cubeState.rotateSlice(_animAxis, _animLayer, _animDir);
+        });
+      }
     });
   }
 
@@ -63,15 +99,32 @@ class _CubeViewState extends State<CubeView> {
     double half = size / 2;
 
     void addFace(Cubie cubie, Color? color, Vector3 offset, Matrix4 localRot) {
+      bool isAnimated = false;
+      if (_isAnimating) {
+        if (_animAxis == 0 && cubie.x.round() == _animLayer) isAnimated = true;
+        if (_animAxis == 1 && cubie.y.round() == _animLayer) isAnimated = true;
+        if (_animAxis == 2 && cubie.z.round() == _animLayer) isAnimated = true;
+      }
+
+      Matrix4 animMatrix = Matrix4.identity();
+      if (isAnimated) {
+        double angle = _animation.value * _animDir * (pi / 2);
+        if (_animAxis == 0) animMatrix.rotateX(angle);
+        else if (_animAxis == 1) animMatrix.rotateY(angle);
+        else if (_animAxis == 2) animMatrix.rotateZ(angle);
+      }
+
       double cx = cubie.x * size + offset.x;
       double cy = cubie.y * size + offset.y;
       double cz = cubie.z * size + offset.z;
 
       Vector3 center = Vector3(cx, cy, cz);
+      animMatrix.transform3(center);
+
       Vector3 transformedCenter = Vector3.copy(center);
       globalTransform.perspectiveTransform(transformedCenter);
 
-      Matrix4 faceTransform = Matrix4.identity()
+      Matrix4 faceTransform = animMatrix.clone()
         ..translate(cubie.x * size, cubie.y * size, cubie.z * size)
         ..multiply(localRot);
 
@@ -83,12 +136,12 @@ class _CubeViewState extends State<CubeView> {
     }
 
     for (var cubie in _cubeState.cubies) {
-      addFace(cubie, cubie.backColor, Vector3(0, 0, -half), Matrix4.identity()..translate(0.0, 0.0, -half)..rotateY(pi));
       addFace(cubie, cubie.upColor, Vector3(0, -half, 0), Matrix4.identity()..translate(0.0, -half, 0.0)..rotateX(-pi / 2));
       addFace(cubie, cubie.downColor, Vector3(0, half, 0), Matrix4.identity()..translate(0.0, half, 0.0)..rotateX(pi / 2));
       addFace(cubie, cubie.leftColor, Vector3(-half, 0, 0), Matrix4.identity()..translate(-half, 0.0, 0.0)..rotateY(-pi / 2));
       addFace(cubie, cubie.rightColor, Vector3(half, 0, 0), Matrix4.identity()..translate(half, 0.0, 0.0)..rotateY(pi / 2));
-      addFace(cubie, cubie.frontColor, Vector3(0, 0, half), Matrix4.identity()..translate(0.0, 0.0, half));
+      addFace(cubie, cubie.backColor, Vector3(0, 0, half), Matrix4.identity()..translate(0.0, 0.0, half)..rotateY(pi));
+      addFace(cubie, cubie.frontColor, Vector3(0, 0, -half), Matrix4.identity()..translate(0.0, 0.0, -half));
     }
 
     // Sort faces from back to front
