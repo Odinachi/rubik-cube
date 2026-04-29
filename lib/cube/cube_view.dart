@@ -70,6 +70,7 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
   int _animDir = 0;
   
   List<CubeMove> _moveHistory = [];
+  bool _isScrambling = false;
 
   @override
   void initState() {
@@ -94,17 +95,34 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
     });
   }
 
-  void _performMove(int axis, int layer) {
-    if (_isAnimating) return;
-    int dir = _prime ? -1 : 1;
-    CubeMove move = CubeMove(axis, layer, dir);
-
+  Future<void> _animateMove(int axis, int layer, int dir, {int durationMs = 300}) async {
+    if (!mounted) return;
+    
     setState(() {
       _isAnimating = true;
       _animAxis = axis;
       _animLayer = layer;
       _animDir = dir;
-      
+    });
+    
+    _controller.duration = Duration(milliseconds: durationMs);
+    await _controller.forward(from: 0.0);
+    
+    if (mounted) {
+      setState(() {
+        _isAnimating = false;
+        _cubeState.rotateSlice(_animAxis, _animLayer, _animDir);
+      });
+      _controller.reset();
+    }
+  }
+
+  void _performMove(int axis, int layer) {
+    if (_isAnimating || _isScrambling) return;
+    int dir = _prime ? -1 : 1;
+    CubeMove move = CubeMove(axis, layer, dir);
+
+    setState(() {
       if (_moveHistory.isNotEmpty && _moveHistory.last.reverse == move) {
         _moveHistory.removeLast();
       } else {
@@ -112,30 +130,36 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
       }
     });
     
-    _controller.forward(from: 0.0).then((_) {
-      if (mounted) {
-        setState(() {
-          _isAnimating = false;
-          _cubeState.rotateSlice(_animAxis, _animLayer, _animDir);
-        });
-      }
-      _controller.reset();
-    });
+    _animateMove(axis, layer, dir);
   }
 
-  void _scrambleCube() {
-    if (_isAnimating) return;
-    final random = Random();
+  Future<void> _scrambleCube() async {
+    if (_isAnimating || _isScrambling) return;
+    
     setState(() {
+      _isScrambling = true;
       _moveHistory.clear();
-      for (int i = 0; i < 20; i++) {
-        int axis = random.nextInt(3);
-        int layer = random.nextBool() ? 1 : -1;
-        int dir = random.nextBool() ? 1 : -1;
-        _cubeState.rotateSlice(axis, layer, dir);
-        _moveHistory.add(CubeMove(axis, layer, dir));
-      }
     });
+
+    final random = Random();
+    for (int i = 0; i < 20; i++) {
+      if (!mounted) break;
+      int axis = random.nextInt(3);
+      int layer = random.nextBool() ? 1 : -1;
+      int dir = random.nextBool() ? 1 : -1;
+      
+      setState(() {
+        _moveHistory.add(CubeMove(axis, layer, dir));
+      });
+      
+      await _animateMove(axis, layer, dir, durationMs: 150);
+    }
+    
+    if (mounted) {
+      setState(() {
+        _isScrambling = false;
+      });
+    }
   }
 
   void _resetCube() {
