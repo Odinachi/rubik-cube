@@ -112,4 +112,16 @@ class CubeState {
       cubie.leftColor = temp;
     }
   }
+
+  bool isSolved() {
+    for (var cubie in cubies) {
+      if (cubie.x == 1 && cubie.rightColor != Colors.red) return false;
+      if (cubie.x == -1 && cubie.leftColor != Colors.orange) return false;
+      if (cubie.y == 1 && cubie.downColor != Colors.yellow) return false;
+      if (cubie.y == -1 && cubie.upColor != Colors.white) return false;
+      if (cubie.z == -1 && cubie.frontColor != Colors.green) return false;
+      if (cubie.z == 1 && cubie.backColor != Colors.blue) return false;
+    }
+    return true;
+  }
 }

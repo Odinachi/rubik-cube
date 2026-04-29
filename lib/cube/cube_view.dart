@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
+import 'package:confetti/confetti.dart';
 import 'cube_state.dart';
 import 'cubie_view.dart';
 import 'cubie.dart';
@@ -25,9 +26,9 @@ class CubeMove {
   final int layer;
   final int dir;
   CubeMove(this.axis, this.layer, this.dir);
-  
+
   CubeMove get reverse => CubeMove(axis, layer, -dir);
-  
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -39,27 +40,34 @@ class CubeMove {
 
   @override
   int get hashCode => axis.hashCode ^ layer.hashCode ^ dir.hashCode;
-  
+
   String get name {
     String base = '';
-    if (axis == 1 && layer == -1) base = 'U';
-    else if (axis == 1 && layer == 1) base = 'D';
-    else if (axis == 0 && layer == -1) base = 'L';
-    else if (axis == 0 && layer == 1) base = 'R';
-    else if (axis == 2 && layer == 1) base = 'F';
-    else if (axis == 2 && layer == -1) base = 'B';
-    
+    if (axis == 1 && layer == -1)
+      base = 'U';
+    else if (axis == 1 && layer == 1)
+      base = 'D';
+    else if (axis == 0 && layer == -1)
+      base = 'L';
+    else if (axis == 0 && layer == 1)
+      base = 'R';
+    else if (axis == 2 && layer == 1)
+      base = 'F';
+    else if (axis == 2 && layer == -1)
+      base = 'B';
+
     if (dir == -1) return "$base'";
     return base;
   }
 }
 
-class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin {
+class _CubeViewState extends State<CubeView>
+    with SingleTickerProviderStateMixin {
   CubeState _cubeState = CubeState();
-  
+
   double _rx = -pi / 6; // Initial rotation X
-  double _ry = pi / 4;  // Initial rotation Y
-  
+  double _ry = pi / 4; // Initial rotation Y
+
   bool _prime = false; // Whether the next move is counter-clockwise
 
   late AnimationController _controller;
@@ -68,15 +76,25 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
   int _animAxis = 0;
   int _animLayer = 0;
   int _animDir = 0;
-  
+
   List<CubeMove> _moveHistory = [];
   bool _isScrambling = false;
+  late ConfettiController _confettiController;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 3),
+    );
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _animation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     _controller.addListener(() {
       setState(() {});
     });
@@ -84,6 +102,7 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
 
   @override
   void dispose() {
+    _confettiController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -95,25 +114,35 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
     });
   }
 
-  Future<void> _animateMove(int axis, int layer, int dir, {int durationMs = 300}) async {
+  Future<void> _animateMove(
+    int axis,
+    int layer,
+    int dir, {
+    int durationMs = 300,
+  }) async {
     if (!mounted) return;
-    
+
     setState(() {
       _isAnimating = true;
       _animAxis = axis;
       _animLayer = layer;
       _animDir = dir;
     });
-    
+
     _controller.duration = Duration(milliseconds: durationMs);
     await _controller.forward(from: 0.0);
-    
+
     if (mounted) {
       setState(() {
         _isAnimating = false;
         _cubeState.rotateSlice(_animAxis, _animLayer, _animDir);
       });
       _controller.reset();
+
+      if (!_isScrambling && _cubeState.isSolved()) {
+        _confettiController.play();
+        _moveHistory.clear();
+      }
     }
   }
 
@@ -129,13 +158,13 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
         _moveHistory.add(move);
       }
     });
-    
+
     _animateMove(axis, layer, dir);
   }
 
   Future<void> _scrambleCube() async {
     if (_isAnimating || _isScrambling) return;
-    
+
     setState(() {
       _isScrambling = true;
       _moveHistory.clear();
@@ -147,14 +176,14 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
       int axis = random.nextInt(3);
       int layer = random.nextBool() ? 1 : -1;
       int dir = random.nextBool() ? 1 : -1;
-      
+
       setState(() {
         _moveHistory.add(CubeMove(axis, layer, dir));
       });
-      
+
       await _animateMove(axis, layer, dir, durationMs: 150);
     }
-    
+
     if (mounted) {
       setState(() {
         _isScrambling = false;
@@ -172,13 +201,13 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
     // Create the global rotation matrix to calculate Z-depth
-    final Matrix4 globalTransform = Matrix4.identity()
-      ..rotateX(_rx)
-      ..rotateY(_ry);
+    final Matrix4 globalTransform =
+        Matrix4.identity()
+          ..rotateX(_rx)
+          ..rotateY(_ry);
 
     List<RenderFace> faces = [];
     double size = 60.0;
@@ -195,9 +224,12 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
       Matrix4 animMatrix = Matrix4.identity();
       if (isAnimated) {
         double angle = _animation.value * _animDir * (pi / 2);
-        if (_animAxis == 0) animMatrix.rotateX(angle);
-        else if (_animAxis == 1) animMatrix.rotateY(angle);
-        else if (_animAxis == 2) animMatrix.rotateZ(angle);
+        if (_animAxis == 0)
+          animMatrix.rotateX(angle);
+        else if (_animAxis == 1)
+          animMatrix.rotateY(angle);
+        else if (_animAxis == 2)
+          animMatrix.rotateZ(angle);
       }
 
       double cx = cubie.x * size + offset.x;
@@ -210,24 +242,63 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
       Vector3 transformedCenter = Vector3.copy(center);
       globalTransform.perspectiveTransform(transformedCenter);
 
-      Matrix4 faceTransform = animMatrix.clone()
-        ..translate(cubie.x * size, cubie.y * size, cubie.z * size)
-        ..multiply(localRot);
+      Matrix4 faceTransform =
+          animMatrix.clone()
+            ..translate(cubie.x * size, cubie.y * size, cubie.z * size)
+            ..multiply(localRot);
 
-      faces.add(RenderFace(
-        faceTransform,
-        color ?? Colors.black87,
-        transformedCenter.z,
-      ));
+      faces.add(
+        RenderFace(faceTransform, color ?? Colors.black87, transformedCenter.z),
+      );
     }
 
     for (var cubie in _cubeState.cubies) {
-      addFace(cubie, cubie.upColor, Vector3(0, -half, 0), Matrix4.identity()..translate(0.0, -half, 0.0)..rotateX(-pi / 2));
-      addFace(cubie, cubie.downColor, Vector3(0, half, 0), Matrix4.identity()..translate(0.0, half, 0.0)..rotateX(pi / 2));
-      addFace(cubie, cubie.leftColor, Vector3(-half, 0, 0), Matrix4.identity()..translate(-half, 0.0, 0.0)..rotateY(-pi / 2));
-      addFace(cubie, cubie.rightColor, Vector3(half, 0, 0), Matrix4.identity()..translate(half, 0.0, 0.0)..rotateY(pi / 2));
-      addFace(cubie, cubie.backColor, Vector3(0, 0, half), Matrix4.identity()..translate(0.0, 0.0, half)..rotateY(pi));
-      addFace(cubie, cubie.frontColor, Vector3(0, 0, -half), Matrix4.identity()..translate(0.0, 0.0, -half));
+      addFace(
+        cubie,
+        cubie.upColor,
+        Vector3(0, -half, 0),
+        Matrix4.identity()
+          ..translate(0.0, -half, 0.0)
+          ..rotateX(-pi / 2),
+      );
+      addFace(
+        cubie,
+        cubie.downColor,
+        Vector3(0, half, 0),
+        Matrix4.identity()
+          ..translate(0.0, half, 0.0)
+          ..rotateX(pi / 2),
+      );
+      addFace(
+        cubie,
+        cubie.leftColor,
+        Vector3(-half, 0, 0),
+        Matrix4.identity()
+          ..translate(-half, 0.0, 0.0)
+          ..rotateY(-pi / 2),
+      );
+      addFace(
+        cubie,
+        cubie.rightColor,
+        Vector3(half, 0, 0),
+        Matrix4.identity()
+          ..translate(half, 0.0, 0.0)
+          ..rotateY(pi / 2),
+      );
+      addFace(
+        cubie,
+        cubie.backColor,
+        Vector3(0, 0, half),
+        Matrix4.identity()
+          ..translate(0.0, 0.0, half)
+          ..rotateY(pi),
+      );
+      addFace(
+        cubie,
+        cubie.frontColor,
+        Vector3(0, 0, -half),
+        Matrix4.identity()..translate(0.0, 0.0, -half),
+      );
     }
 
     // Sort faces from back to front
@@ -252,59 +323,86 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Hint: Play ${_moveHistory.last.reverse.name}')),
+                  SnackBar(
+                    content: Text(
+                      'Hint: Play ${_moveHistory.last.reverse.name}',
+                    ),
+                  ),
                 );
               }
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _resetCube,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _resetCube),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: GestureDetector(
-              onPanUpdate: _onPanUpdate,
-              child: Container(
-                color: Colors.transparent, // Catch gestures
-                child: Center(
-                  child: Transform(
-                    transform: globalTransform,
-                    alignment: Alignment.center,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: faces.map((face) {
-                        return Transform(
-                          transform: face.transform,
+          Column(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onPanUpdate: _onPanUpdate,
+                  child: Container(
+                    color: Colors.transparent, // Catch gestures
+                    child: Center(
+                      child: Transform(
+                        transform: globalTransform,
+                        alignment: Alignment.center,
+                        child: Stack(
                           alignment: Alignment.center,
-                          child: Container(
-                            width: size,
-                            height: size,
-                            decoration: BoxDecoration(
-                              color: face.color,
-                              border: Border.all(color: Colors.black, width: 2),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                          children:
+                              faces.map((face) {
+                                return Transform(
+                                  transform: face.transform,
+                                  alignment: Alignment.center,
+                                  child: Container(
+                                    width: size,
+                                    height: size,
+                                    decoration: BoxDecoration(
+                                      color: face.color,
+                                      border: Border.all(
+                                        color: Colors.black,
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
+              _buildControls(),
+            ],
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirection: pi / 2, // blast downwards
+              maxBlastForce: 5,
+              minBlastForce: 2,
+              emissionFrequency: 0.05,
+              numberOfParticles: 20,
+              gravity: 0.1,
+              colors: const [
+                Colors.red,
+                Colors.green,
+                Colors.blue,
+                Colors.yellow,
+                Colors.orange,
+                Colors.white,
+              ],
             ),
           ),
-          _buildControls(),
         ],
       ),
     );
   }
 
-
-  
   Widget _buildControls() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -321,7 +419,10 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Prime (\')', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  const Text(
+                    'Prime (\')',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
                   Switch(
                     value: _prime,
                     onChanged: (val) => setState(() => _prime = val),
@@ -368,7 +469,11 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
         ),
         child: Text(
           label + (_prime ? "'" : ""),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
       ),
     );
