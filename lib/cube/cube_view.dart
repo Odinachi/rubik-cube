@@ -74,6 +74,20 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
           _cubeState.rotateSlice(_animAxis, _animLayer, _animDir);
         });
       }
+      _controller.reset();
+    });
+  }
+
+  void _scrambleCube() {
+    if (_isAnimating) return;
+    final random = Random();
+    setState(() {
+      for (int i = 0; i < 20; i++) {
+        int axis = random.nextInt(3);
+        int layer = random.nextInt(3) - 1;
+        int dir = random.nextBool() ? 1 : -1;
+        _cubeState.rotateSlice(axis, layer, dir);
+      }
     });
   }
 
@@ -215,12 +229,26 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              const Text('Prime (\')', style: TextStyle(color: Colors.white, fontSize: 16)),
-              Switch(
-                value: _prime,
-                onChanged: (val) => setState(() => _prime = val),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Prime (\')', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  Switch(
+                    value: _prime,
+                    onChanged: (val) => setState(() => _prime = val),
+                  ),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: _scrambleCube,
+                icon: const Icon(Icons.shuffle),
+                label: const Text('Scramble'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueGrey,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),
