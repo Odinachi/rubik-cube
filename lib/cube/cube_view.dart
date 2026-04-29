@@ -20,6 +20,40 @@ class RenderFace {
   RenderFace(this.transform, this.color, this.zDepth);
 }
 
+class CubeMove {
+  final int axis;
+  final int layer;
+  final int dir;
+  CubeMove(this.axis, this.layer, this.dir);
+  
+  CubeMove get reverse => CubeMove(axis, layer, -dir);
+  
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CubeMove &&
+          runtimeType == other.runtimeType &&
+          axis == other.axis &&
+          layer == other.layer &&
+          dir == other.dir;
+
+  @override
+  int get hashCode => axis.hashCode ^ layer.hashCode ^ dir.hashCode;
+  
+  String get name {
+    String base = '';
+    if (axis == 1 && layer == -1) base = 'U';
+    else if (axis == 1 && layer == 1) base = 'D';
+    else if (axis == 0 && layer == -1) base = 'L';
+    else if (axis == 0 && layer == 1) base = 'R';
+    else if (axis == 2 && layer == 1) base = 'F';
+    else if (axis == 2 && layer == -1) base = 'B';
+    
+    if (dir == -1) return "$base'";
+    return base;
+  }
+}
+
 class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin {
   CubeState _cubeState = CubeState();
   
@@ -34,6 +68,8 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
   int _animAxis = 0;
   int _animLayer = 0;
   int _animDir = 0;
+  
+  List<CubeMove> _moveHistory = [];
 
   @override
   void initState() {
@@ -60,11 +96,20 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
 
   void _performMove(int axis, int layer) {
     if (_isAnimating) return;
+    int dir = _prime ? -1 : 1;
+    CubeMove move = CubeMove(axis, layer, dir);
+
     setState(() {
       _isAnimating = true;
       _animAxis = axis;
       _animLayer = layer;
-      _animDir = _prime ? -1 : 1;
+      _animDir = dir;
+      
+      if (_moveHistory.isNotEmpty && _moveHistory.last.reverse == move) {
+        _moveHistory.removeLast();
+      } else {
+        _moveHistory.add(move);
+      }
     });
     
     _controller.forward(from: 0.0).then((_) {
@@ -82,11 +127,13 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
     if (_isAnimating) return;
     final random = Random();
     setState(() {
+      _moveHistory.clear();
       for (int i = 0; i < 20; i++) {
         int axis = random.nextInt(3);
-        int layer = random.nextInt(3) - 1;
+        int layer = random.nextBool() ? 1 : -1;
         int dir = random.nextBool() ? 1 : -1;
         _cubeState.rotateSlice(axis, layer, dir);
+        _moveHistory.add(CubeMove(axis, layer, dir));
       }
     });
   }
@@ -97,6 +144,7 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
       _cubeState = CubeState();
       _rx = -pi / 6;
       _ry = pi / 4;
+      _moveHistory.clear();
     });
   }
 
@@ -170,6 +218,21 @@ class _CubeViewState extends State<CubeView> with SingleTickerProviderStateMixin
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.lightbulb_outline),
+            tooltip: 'Hint',
+            onPressed: () {
+              if (_moveHistory.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('The cube is already solved!')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Hint: Play ${_moveHistory.last.reverse.name}')),
+                );
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _resetCube,
