@@ -79,6 +79,7 @@ class _CubeViewState extends State<CubeView>
 
   List<CubeMove> _moveHistory = [];
   bool _isScrambling = false;
+  bool _isAutoSolving = false;
   late ConfettiController _confettiController;
 
   @override
@@ -147,7 +148,7 @@ class _CubeViewState extends State<CubeView>
   }
 
   void _performMove(int axis, int layer) {
-    if (_isAnimating || _isScrambling) return;
+    if (_isAnimating || _isScrambling || _isAutoSolving) return;
     int dir = _prime ? -1 : 1;
     CubeMove move = CubeMove(axis, layer, dir);
 
@@ -162,8 +163,32 @@ class _CubeViewState extends State<CubeView>
     _animateMove(axis, layer, dir);
   }
 
+  Future<void> _autoSolveCube() async {
+    if (_isAnimating || _isScrambling || _isAutoSolving) return;
+    
+    setState(() {
+      _isAutoSolving = true;
+    });
+
+    while (_moveHistory.isNotEmpty && mounted && _isAutoSolving) {
+      CubeMove reverseMove = _moveHistory.last.reverse;
+      
+      setState(() {
+        _moveHistory.removeLast();
+      });
+      
+      await _animateMove(reverseMove.axis, reverseMove.layer, reverseMove.dir, durationMs: 150);
+    }
+    
+    if (mounted) {
+      setState(() {
+        _isAutoSolving = false;
+      });
+    }
+  }
+
   Future<void> _scrambleCube() async {
-    if (_isAnimating || _isScrambling) return;
+    if (_isAnimating || _isScrambling || _isAutoSolving) return;
 
     setState(() {
       _isScrambling = true;
@@ -329,6 +354,19 @@ class _CubeViewState extends State<CubeView>
                     ),
                   ),
                 );
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.play_arrow),
+            tooltip: 'Auto Solve',
+            onPressed: () {
+              if (_moveHistory.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('The cube is already solved!')),
+                );
+              } else {
+                _autoSolveCube();
               }
             },
           ),
