@@ -20,18 +20,19 @@ class CubeMove {
 
   String get name {
     String base = '';
-    if (axis == 1 && layer == -1)
+    if (axis == 1 && layer == -1) {
       base = 'U';
-    else if (axis == 1 && layer == 1)
+    } else if (axis == 1 && layer == 1) {
       base = 'D';
-    else if (axis == 0 && layer == -1)
+    } else if (axis == 0 && layer == -1) {
       base = 'L';
-    else if (axis == 0 && layer == 1)
+    } else if (axis == 0 && layer == 1) {
       base = 'R';
-    else if (axis == 2 && layer == 1)
+    } else if (axis == 2 && layer == 1) {
       base = 'F';
-    else if (axis == 2 && layer == -1)
+    } else if (axis == 2 && layer == -1) {
       base = 'B';
+    }
 
     if (dir == -1) return "$base'";
     return base;

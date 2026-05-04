@@ -5,10 +5,10 @@ class CubeControls extends StatefulWidget {
   final void Function(int axis, int layer, int dir) onMove;
 
   const CubeControls({
-    Key? key,
+    super.key,
     required this.onScramble,
     required this.onMove,
-  }) : super(key: key);
+  });
 
   @override
   State<CubeControls> createState() => _CubeControlsState();
