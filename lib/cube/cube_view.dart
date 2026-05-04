@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 import 'package:confetti/confetti.dart';
 import 'cube_state.dart';
-import 'cubie_view.dart';
 import 'cubie.dart';
+import 'cube_move.dart';
+import 'cube_controls.dart';
 
 class CubeView extends StatefulWidget {
   const CubeView({Key? key}) : super(key: key);
@@ -21,54 +22,12 @@ class RenderFace {
   RenderFace(this.transform, this.color, this.zDepth);
 }
 
-class CubeMove {
-  final int axis;
-  final int layer;
-  final int dir;
-  CubeMove(this.axis, this.layer, this.dir);
-
-  CubeMove get reverse => CubeMove(axis, layer, -dir);
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CubeMove &&
-          runtimeType == other.runtimeType &&
-          axis == other.axis &&
-          layer == other.layer &&
-          dir == other.dir;
-
-  @override
-  int get hashCode => axis.hashCode ^ layer.hashCode ^ dir.hashCode;
-
-  String get name {
-    String base = '';
-    if (axis == 1 && layer == -1)
-      base = 'U';
-    else if (axis == 1 && layer == 1)
-      base = 'D';
-    else if (axis == 0 && layer == -1)
-      base = 'L';
-    else if (axis == 0 && layer == 1)
-      base = 'R';
-    else if (axis == 2 && layer == 1)
-      base = 'F';
-    else if (axis == 2 && layer == -1)
-      base = 'B';
-
-    if (dir == -1) return "$base'";
-    return base;
-  }
-}
-
 class _CubeViewState extends State<CubeView>
     with SingleTickerProviderStateMixin {
   CubeState _cubeState = CubeState();
 
   double _rx = -pi / 6; // Initial rotation X
   double _ry = pi / 4; // Initial rotation Y
-
-  bool _prime = false; // Whether the next move is counter-clockwise
 
   late AnimationController _controller;
   late Animation<double> _animation;
@@ -147,9 +106,8 @@ class _CubeViewState extends State<CubeView>
     }
   }
 
-  void _performMove(int axis, int layer) {
+  void _performMove(int axis, int layer, int dir) {
     if (_isAnimating || _isScrambling || _isAutoSolving) return;
-    int dir = _prime ? -1 : 1;
     CubeMove move = CubeMove(axis, layer, dir);
 
     setState(() {
@@ -413,7 +371,10 @@ class _CubeViewState extends State<CubeView>
                   ),
                 ),
               ),
-              _buildControls(),
+              CubeControls(
+                onScramble: _scrambleCube,
+                onMove: _performMove,
+              ),
             ],
           ),
           Align(
@@ -441,79 +402,4 @@ class _CubeViewState extends State<CubeView>
     );
   }
 
-  Widget _buildControls() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Prime (\')',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                  Switch(
-                    value: _prime,
-                    onChanged: (val) => setState(() => _prime = val),
-                  ),
-                ],
-              ),
-              ElevatedButton.icon(
-                onPressed: _scrambleCube,
-                icon: const Icon(Icons.shuffle),
-                label: const Text('Scramble'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _btn('U', () => _performMove(1, -1)),
-              _btn('D', () => _performMove(1, 1)),
-              _btn('L', () => _performMove(0, -1)),
-              _btn('R', () => _performMove(0, 1)),
-              _btn('F', () => _performMove(2, 1)),
-              _btn('B', () => _performMove(2, -1)),
-            ],
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _btn(String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.blueGrey,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label + (_prime ? "'" : ""),
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-      ),
-    );
-  }
 }
