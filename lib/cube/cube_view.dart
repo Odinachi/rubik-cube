@@ -2,6 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 import 'package:confetti/confetti.dart';
+import '../core/app_colors.dart';
+import '../core/app_strings.dart';
+import '../core/app_styles.dart';
 import 'cube_state.dart';
 import 'cubie.dart';
 import 'cube_move.dart';
@@ -123,21 +126,26 @@ class _CubeViewState extends State<CubeView>
 
   Future<void> _autoSolveCube() async {
     if (_isAnimating || _isScrambling || _isAutoSolving) return;
-    
+
     setState(() {
       _isAutoSolving = true;
     });
 
     while (_moveHistory.isNotEmpty && mounted && _isAutoSolving) {
       CubeMove reverseMove = _moveHistory.last.reverse;
-      
+
       setState(() {
         _moveHistory.removeLast();
       });
-      
-      await _animateMove(reverseMove.axis, reverseMove.layer, reverseMove.dir, durationMs: 150);
+
+      await _animateMove(
+        reverseMove.axis,
+        reverseMove.layer,
+        reverseMove.dir,
+        durationMs: 150,
+      );
     }
-    
+
     if (mounted) {
       setState(() {
         _isAutoSolving = false;
@@ -207,12 +215,13 @@ class _CubeViewState extends State<CubeView>
       Matrix4 animMatrix = Matrix4.identity();
       if (isAnimated) {
         double angle = _animation.value * _animDir * (pi / 2);
-        if (_animAxis == 0)
+        if (_animAxis == 0) {
           animMatrix.rotateX(angle);
-        else if (_animAxis == 1)
+        } else if (_animAxis == 1) {
           animMatrix.rotateY(angle);
-        else if (_animAxis == 2)
+        } else if (_animAxis == 2) {
           animMatrix.rotateZ(angle);
+        }
       }
 
       double cx = cubie.x * size + offset.x;
@@ -292,23 +301,23 @@ class _CubeViewState extends State<CubeView>
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Rubik\'s Cube'),
+        title: const Text(AppStrings.appName),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.lightbulb_outline),
-            tooltip: 'Hint',
+            tooltip: AppStrings.hintTooltip,
             onPressed: () {
               if (_moveHistory.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('The cube is already solved!')),
+                  const SnackBar(content: Text(AppStrings.alreadySolvedMsg)),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      'Hint: Play ${_moveHistory.last.reverse.name}',
+                      AppStrings.hintMsg(_moveHistory.last.reverse.name),
                     ),
                   ),
                 );
@@ -317,11 +326,11 @@ class _CubeViewState extends State<CubeView>
           ),
           IconButton(
             icon: const Icon(Icons.play_arrow),
-            tooltip: 'Auto Solve',
+            tooltip: AppStrings.autoSolveTooltip,
             onPressed: () {
               if (_moveHistory.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('The cube is already solved!')),
+                  const SnackBar(content: Text(AppStrings.alreadySolvedMsg)),
                 );
               } else {
                 _autoSolveCube();
@@ -332,17 +341,7 @@ class _CubeViewState extends State<CubeView>
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1a1a2e),
-              Color(0xFF16213e),
-              Color(0xFF0f3460),
-            ],
-          ),
-        ),
+        decoration: AppStyles.backgroundGradient,
         child: LayoutBuilder(
           builder: (context, constraints) {
             bool isWide = constraints.maxWidth > 800;
@@ -357,24 +356,25 @@ class _CubeViewState extends State<CubeView>
                     alignment: Alignment.center,
                     child: Stack(
                       alignment: Alignment.center,
-                      children: faces.map((face) {
-                        return Transform(
-                          transform: face.transform,
-                          alignment: Alignment.center,
-                          child: Container(
-                            width: size,
-                            height: size,
-                            decoration: BoxDecoration(
-                              color: face.color,
-                              border: Border.all(
-                                color: Colors.black,
-                                width: 2,
+                      children:
+                          faces.map((face) {
+                            return Transform(
+                              transform: face.transform,
+                              alignment: Alignment.center,
+                              child: Container(
+                                width: size,
+                                height: size,
+                                decoration: BoxDecoration(
+                                  color: face.color,
+                                  border: Border.all(
+                                    color: AppColors.cubeBorder,
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
                               ),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                            );
+                          }).toList(),
                     ),
                   ),
                 ),
@@ -392,18 +392,12 @@ class _CubeViewState extends State<CubeView>
               mainContent = Row(
                 children: [
                   Expanded(child: cubeArea),
-                  SizedBox(
-                    width: 350,
-                    child: controlsArea,
-                  ),
+                  SizedBox(width: 350, child: controlsArea),
                 ],
               );
             } else {
               mainContent = Column(
-                children: [
-                  Expanded(child: cubeArea),
-                  controlsArea,
-                ],
+                children: [Expanded(child: cubeArea), controlsArea],
               );
             }
 
@@ -420,14 +414,7 @@ class _CubeViewState extends State<CubeView>
                     emissionFrequency: 0.05,
                     numberOfParticles: 20,
                     gravity: 0.1,
-                    colors: const [
-                      Colors.red,
-                      Colors.green,
-                      Colors.blue,
-                      Colors.yellow,
-                      Colors.orange,
-                      Colors.white,
-                    ],
+                    colors: AppColors.confettiColors,
                   ),
                 ),
               ],
@@ -437,5 +424,4 @@ class _CubeViewState extends State<CubeView>
       ),
     );
   }
-
 }

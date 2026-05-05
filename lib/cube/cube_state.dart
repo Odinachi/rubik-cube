@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/app_colors.dart';
 import 'cubie.dart';
 
 class CubeState {
@@ -20,12 +21,12 @@ class CubeState {
             y: y.toDouble(),
             z: z.toDouble(),
             // Colors are assigned only to outer faces
-            rightColor: x == 1 ? Colors.red : null,
-            leftColor: x == -1 ? Colors.orange : null,
-            downColor: y == 1 ? Colors.yellow : null,
-            upColor: y == -1 ? Colors.white : null,
-            frontColor: z == -1 ? Colors.green : null,
-            backColor: z == 1 ? Colors.blue : null,
+            rightColor: x == 1 ? AppColors.cubeRight : null,
+            leftColor: x == -1 ? AppColors.cubeLeft : null,
+            downColor: y == 1 ? AppColors.cubeDown : null,
+            upColor: y == -1 ? AppColors.cubeUp : null,
+            frontColor: z == -1 ? AppColors.cubeFront : null,
+            backColor: z == 1 ? AppColors.cubeBack : null,
           ));
         }
       }
@@ -115,12 +116,12 @@ class CubeState {
 
   bool isSolved() {
     for (var cubie in cubies) {
-      if (cubie.x == 1 && cubie.rightColor != Colors.red) return false;
-      if (cubie.x == -1 && cubie.leftColor != Colors.orange) return false;
-      if (cubie.y == 1 && cubie.downColor != Colors.yellow) return false;
-      if (cubie.y == -1 && cubie.upColor != Colors.white) return false;
-      if (cubie.z == -1 && cubie.frontColor != Colors.green) return false;
-      if (cubie.z == 1 && cubie.backColor != Colors.blue) return false;
+      if (cubie.x.round() == 1 && cubie.rightColor != AppColors.cubeRight) return false;
+      if (cubie.x.round() == -1 && cubie.leftColor != AppColors.cubeLeft) return false;
+      if (cubie.y.round() == 1 && cubie.downColor != AppColors.cubeDown) return false;
+      if (cubie.y.round() == -1 && cubie.upColor != AppColors.cubeUp) return false;
+      if (cubie.z.round() == -1 && cubie.frontColor != AppColors.cubeFront) return false;
+      if (cubie.z.round() == 1 && cubie.backColor != AppColors.cubeBack) return false;
     }
     return true;
   }
