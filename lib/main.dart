@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'core/app_strings.dart';
 import 'core/app_colors.dart';
 import 'cube/cube_view.dart';
@@ -21,9 +21,7 @@ class MyApp extends StatelessWidget {
           seedColor: AppColors.seedColor,
           brightness: Brightness.dark,
         ),
-        textTheme: GoogleFonts.interTextTheme(
-          ThemeData(brightness: Brightness.dark).textTheme,
-        ),
+
         useMaterial3: true,
       ),
       home: const CubeView(),
